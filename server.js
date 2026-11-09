@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import YTDlpWrap from 'yt-dlp-wrap';
+import YTDlpWrapModule from 'yt-dlp-wrap';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
@@ -10,6 +10,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Arreglo para el constructor
+const YTDlpWrap = YTDlpWrapModule.default || YTDlpWrapModule;
 const ytDlp = new YTDlpWrap();
 
 // Health check
