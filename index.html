@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b12">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<title>DJ Studio</title>
+<style>
+:root{--bg:#0b0b12;--panel:#151522;--panel2:#1d1d30;--txt:#ecebff;--mut:#8b8aa8;--acc:#7c5cff;--acc2:#19e3b1;--bad:#ff5c7c}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh;padding-bottom:150px}
+header{padding:18px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;background:linear-gradient(var(--bg),#0b0b12ee);z-index:5;backdrop-filter:blur(8px)}
+header h1{font-size:1.2rem;letter-spacing:.5px}
+header h1 span{color:var(--acc2)}
+header button{margin-left:auto}
+main{max-width:980px;margin:auto;padding:0 14px}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;background:var(--panel);border:1px solid #26263d;color:var(--mut);padding:10px 14px;border-radius:12px;cursor:pointer;font-size:.9rem}
+.tab.on{background:linear-gradient(135deg,var(--acc),#5b3df5);color:#fff;border-color:transparent}
+.card{background:var(--panel);border-radius:16px;padding:16px;margin-bottom:14px;border:1px solid #23233a}
+.card p.hint{color:var(--mut);font-size:.85rem;margin-bottom:10px;line-height:1.4}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input,textarea{flex:1;min-width:0;background:var(--panel2);border:1px solid #2c2c48;border-radius:12px;color:var(--txt);padding:12px;font-size:1rem}
+textarea{width:100%;min-height:120px;resize:vertical}
+button{background:var(--acc);color:#fff;border:0;border-radius:12px;padding:11px 16px;font-size:.95rem;cursor:pointer}
+button.ghost{background:var(--panel2);color:var(--txt)}
+button.dl{background:var(--acc2);color:#04130f;font-weight:600}
+button:disabled{opacity:.4;cursor:not-allowed}
+.res{display:flex;gap:12px;align-items:center;padding:10px;border-radius:12px;background:var(--panel2);margin-top:8px}
+.res img,.res .ph{width:54px;height:54px;border-radius:10px;object-fit:cover;background:#2a2a45;flex:0 0 auto}
+.res .info{flex:1;min-width:0}
+.res .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res .a{color:var(--mut);font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-block;font-size:.68rem;padding:2px 7px;border-radius:20px;background:#2a2a45;color:var(--mut);margin-right:4px}
+.badge.ok{background:#0e3a30;color:var(--acc2)}
+.res .acts{display:flex;gap:6px;flex:0 0 auto}
+.status{color:var(--mut);font-size:.88rem;margin:8px 0}
+.status.err{color:var(--bad)}
+h3{font-size:.95rem;margin:14px 0 4px;color:var(--acc2)}
+#player{position:fixed;left:0;right:0;bottom:0;background:#12121fee;backdrop-filter:blur(12px);border-top:1px solid #26263d;padding:10px 14px calc(10px + env(safe-area-inset-bottom));z-index:10}
+#player .in{max-width:980px;margin:auto}
+#pt{font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pa{color:var(--mut);font-size:.78rem;margin-bottom:6px}
+.ctl{display:flex;align-items:center;gap:10px}
+#play{width:44px;height:44px;border-radius:50%;padding:0;font-size:1.1rem}
+input[type=range]{padding:0;accent-color:var(--acc2);height:24px;background:none;border:0}
+#seek{flex:1}
+#vol{width:90px;flex:0 0 90px}
+.time{font-size:.75rem;color:var(--mut);min-width:34px;text-align:center}
+@media(max-width:560px){#vol{display:none}.res .acts{flex-direction:column}}
+dialog{background:var(--panel);color:var(--txt);border:1px solid #2c2c48;border-radius:16px;padding:18px;max-width:460px;width:92%}
+dialog::backdrop{background:#000a}
+</style>
+</head>
+<body>
+<header>
+  <h1>DJ <span>Studio</span></h1>
+  <button class="ghost" id="btnSet">⚙ Ajustes</button>
+</header>
+<main>
+  <nav class="tabs" id="tabs"></nav>
+  <section id="view"></section>
+  <div class="status" id="status"></div>
+  <div id="results"></div>
+</main>
+
+<div id="player">
+  <div class="in">
+    <div id="pt">Nada en reproducción</div>
+    <div id="pa">Elige una pista para escuchar la vista previa</div>
+    <div class="ctl">
+      <button id="play" disabled>▶</button>
+      <span class="time" id="cur">0:00</span>
+      <input type="range" id="seek" min="0" max="1000" value="0">
+      <span class="time" id="dur">0:00</span>
+      <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8" title="Volumen">
+    </div>
+  </div>
+</div>
+<audio id="audio" preload="none"></audio>
+
+<dialog id="dlgSet">
+  <h3 style="margin-top:0">Ajustes</h3>
+  <p class="hint" style="color:var(--mut);font-size:.85rem;margin:8px 0">Client ID gratuito de Jamendo (regístrate en devportal.jamendo.com). Sin él solo se usa Audius e iTunes.</p>
+  <input id="jamKey" placeholder="Jamendo client_id">
+  <div class="row" style="margin-top:12px;justify-content:flex-end">
+    <button class="ghost" id="setCancel">Cerrar</button>
+    <button id="setSave">Guardar</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+const APP="DJStudioPWA";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const jamKey=()=>{try{return localStorage.getItem("jamKey")||""}catch{return ""}};
+
+const MODES={
+  dj:{label:"🎧 DJ / Ediciones",ph:"Nombre o enlace de YouTube/Spotify",hint:"Prioriza versiones extended, intro/outro, club mix, edits y mixes."},
+  remix:{label:"🔁 Remixes",ph:"Nombre de la canción o enlace",hint:"Lista los remixes existentes (MusicBrainz) y busca vista previa de cada uno."},
+  simple:{label:"🎵 Pista simple",ph:"Nombre o enlace de YouTube/Spotify",hint:"Búsqueda directa de canciones."},
+  playlist:{label:"📚 Playlists",ph:"",hint:"YouTube/Spotify no permiten leer las pistas de una lista sin su API privada. Pega el enlace (para ver su título) y/o pega las canciones, una por línea, y las busco todas."},
+  url:{label:"🔗 Desde enlace",ph:"Pega un enlace de YouTube o Spotify",hint:"Identifico el título del enlace y busco la versión legal descargable."}
+};
+let mode="dj";
+
+function buildTabs(){
+  $("#tabs").innerHTML=Object.entries(MODES).map(([k,m])=>`<button class="tab ${k===mode?"on":""}" data-m="${k}">${m.label}</button>`).join("");
+  $("#tabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{mode=b.dataset.m;buildTabs();buildView();$("#results").innerHTML="";setStatus("")});
+}
+function buildView(){
+  const m=MODES[mode];
+  if(mode==="playlist"){
+    $("#view").innerHTML=`<div class="card"><p class="hint">${m.hint}</p>
+      <div class="row" style="margin-bottom:10px"><input id="q" placeholder="Enlace de la playlist (opcional)"></div>
+      <textarea id="list" placeholder="Artista - Canción&#10;Artista - Canción&#10;..."></textarea>
+      <div class="row" style="margin-top:10px"><button id="go">Procesar lista</button></div></div>`;
+  }else{
+    $("#view").innerHTML=`<div class="card"><p class="hint">${m.hint}</p>
+      <div class="row"><input id="q" placeholder="${m.ph}" enterkeyhint="search"><button id="go">Buscar</button></div></div>`;
+  }
+  $("#go").onclick=run;
+  const q=$("#q"); q&&q.addEventListener("keydown",e=>{if(e.key==="Enter")run()});
+}
+function setStatus(t,err){const s=$("#status");s.textContent=t;s.className="status"+(err?" err":"")}
+
+/* ---------- Identificar enlaces ---------- */
+const isUrl=s=>/^https?:\/\//i.test(s.trim());
+async function titleFromUrl(u){
+  u=u.trim();
+  let ep=null;
+  if(/youtu\.?be/i.test(u)) ep="https://www.youtube.com/oembed?format=json&url="+encodeURIComponent(u);
+  else if(/spotify\.com/i.test(u)) ep="https://open.spotify.com/oembed?url="+encodeURIComponent(u);
+  if(!ep) throw new Error("Enlace no reconocido (usa YouTube o Spotify).");
+  const r=await fetch(ep); if(!r.ok) throw new Error("No pude leer el enlace.");
+  const j=await r.json();
+  let t=j.title||"";
+  if(j.author_name && /youtu/i.test(u)) t=t.replace(/\s*[\(\[].*?(official|video|audio|lyrics|lyric|hd|4k).*?[\)\]]/gi,"")+" "+j.author_name.replace(/ - Topic$/,"");
+  return t.trim();
+}
+
+/* ---------- Fuentes ---------- */
+async function srcAudius(q){
+  const r=await fetch(`https://api.audius.co/v1/tracks/search?query=${encodeURIComponent(q)}&app_name=${APP}&limit=15`);
+  const j=await r.json();
+  return (j.data||[]).map(t=>{
+    const stream=`https://api.audius.co/v1/tracks/${t.id}/stream?app_name=${APP}`;
+    const can=(t.access&&t.access.download===true)||t.is_downloadable===true;
+    return{src:"Audius",title:t.title,artist:t.user?.name||"",art:t.artwork?.["150x150"]||"",preview:stream,
+      dl:can?stream:null,ext:"mp3",link:"https://audius.co"+(t.permalink||""),lic:can?"Descarga permitida por el artista":"Solo streaming"};
+  });
+}
+async function srcJamendo(q){
+  const k=jamKey(); if(!k) return [];
+  const r=await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${encodeURIComponent(k)}&format=json&limit=15&search=${encodeURIComponent(q)}&audiodlformat=mp32`);
+  const j=await r.json();
+  return (j.results||[]).map(t=>({src:"Jamendo",title:t.name,artist:t.artist_name,art:t.image,preview:t.audio,
+    dl:t.audiodownload_allowed?t.audiodownload:null,ext:"mp3",link:t.shareurl,lic:t.audiodownload_allowed?"Creative Commons":"Solo streaming"}));
+}
+async function srcItunes(q){
+  const r=await fetch(`https://itunes.apple.com/search?media=music&entity=song&limit=15&term=${encodeURIComponent(q)}`);
+  const j=await r.json();
+  return (j.results||[]).filter(t=>t.previewUrl).map(t=>({src:"iTunes",title:t.trackName,artist:t.artistName,art:t.artworkUrl100,
+    preview:t.previewUrl,dl:null,ext:"m4a",link:t.trackViewUrl,lic:"Preview 30 s · cómpralo en tienda"}));
+}
+async function searchAll(q){
+  const rs=await Promise.allSettled([srcAudius(q),srcJamendo(q),srcItunes(q)]);
+  return rs.flatMap(r=>r.status==="fulfilled"?r.value:[]);
+}
+
+/* ---------- Render ---------- */
+let store=[];
+function renderList(items,target){
+  const base=store.length; store.push(...items);
+  const html=items.map((t,i)=>{
+    const id=base+i;
+    return `<div class="res">
+      ${t.art?`<img src="${esc(t.art)}" alt="" loading="lazy">`:`<div class="ph"></div>`}
+      <div class="info"><div class="t">${esc(t.title)}</div><div class="a">${esc(t.artist)}</div>
+      <div><span class="badge">${esc(t.src)}</span><span class="badge ${t.dl?"ok":""}">${esc(t.lic)}</span></div></div>
+      <div class="acts"><button class="ghost" data-p="${id}">▶</button>
+      ${t.dl?`<button class="dl" data-d="${id}">⬇</button>`:`<button class="ghost" data-l="${id}">↗</button>`}</div></div>`;
+  }).join("");
+  target.insertAdjacentHTML("beforeend",html||`<div class="status">Sin resultados.</div>`);
+}
+$("#results").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.p!==undefined) playTrack(store[b.dataset.p]);
+  if(b.dataset.d!==undefined) download(store[b.dataset.d],b);
+  if(b.dataset.l!==undefined) window.open(store[b.dataset.l].link,"_blank","noopener");
+});
+
+/* ---------- Búsqueda por modo ---------- */
+function djRank(items){
+  const kw=/(extended|club mix|intro|outro|edit|dj|remix|mix|bootleg|radio edit)/i;
+  return items.sort((a,b)=>(kw.test(b.title)-kw.test(a.title)));
+}
+async function resolveQuery(){
+  let q=($("#q")?.value||"").trim();
+  if(!q) throw new Error("Escribe algo para buscar.");
+  if(isUrl(q)){setStatus("Leyendo enlace…");q=await titleFromUrl(q);}
+  return q;
+}
+async function run(){
+  const res=$("#results"); res.innerHTML=""; store=[];
+  $("#go").disabled=true;
+  try{
+    if(mode==="playlist"){
+      const lines=($("#list").value||"").split("\n").map(s=>s.trim()).filter(Boolean);
+      const u=($("#q").value||"").trim();
+      if(u){try{const t=await titleFromUrl(u);res.insertAdjacentHTML("beforeend",`<div class="status">Lista: ${esc(t)}</div>`)}catch(e){}}
+      if(!lines.length) throw new Error("Pega las canciones de la lista, una por línea.");
+      for(let i=0;i<lines.length;i++){
+        setStatus(`Buscando ${i+1}/${lines.length}…`);
+        const r=await searchAll(lines[i]);
+        res.insertAdjacentHTML("beforeend",`<h3>${esc(lines[i])}</h3>`);
+        const holder=document.createElement("div"); res.appendChild(holder);
+        renderList(r.slice(0,3),holder);
+      }
+      setStatus("Lista procesada.");
+    }else if(mode==="remix"){
+      const q=await resolveQuery(); setStatus(`Buscando remixes de “${q}”…`);
+      const mb=await fetch(`https://musicbrainz.org/ws/2/recording?fmt=json&limit=40&query=${encodeURIComponent(`(recording:"${q}" OR "${q}") AND (disambiguation:remix OR recording:remix OR recording:mix)`)}`).then(r=>r.json());
+      const seen=new Set(); const list=[];
+      for(const r of mb.recordings||[]){
+        const k=(r.title+"|"+(r["artist-credit"]?.[0]?.name||"")).toLowerCase();
+        if(seen.has(k)) continue; seen.add(k); list.push(r);
+      }
+      res.insertAdjacentHTML("beforeend",`<h3>Remixes encontrados (${list.length})</h3>`);
+      list.forEach(r=>res.insertAdjacentHTML("beforeend",`<div class="res"><div class="ph"></div><div class="info"><div class="t">${esc(r.title)}</div><div class="a">${esc(r["artist-credit"]?.map(a=>a.name).join(", ")||"")}</div></div><div class="acts"><button class="ghost" data-find="${esc(r.title+" "+(r["artist-credit"]?.[0]?.name||""))}">Escuchar</button></div></div>`));
+      const extra=document.createElement("div"); res.appendChild(extra);
+      extra.insertAdjacentHTML("beforeend",`<h3>Versiones con audio disponible</h3>`);
+      renderList(djRank(await searchAll(q+" remix")),extra);
+      setStatus("");
+    }else{
+      let q=await resolveQuery();
+      setStatus(`Buscando “${q}”…`);
+      let items=await searchAll(mode==="dj"?q+" extended":q);
+      if(mode==="dj") items=djRank(items.concat(await searchAll(q+" mix")));
+      renderList(items,res); setStatus(items.length?`${items.length} resultados`:"");
+    }
+  }catch(e){setStatus(e.message||"Error de red",true)}
+  $("#go").disabled=false;
+}
+$("#results").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-find]"); if(!b) return;
+  setStatus("Buscando audio…"); const r=await searchAll(b.dataset.find);
+  const holder=document.createElement("div"); b.closest(".res").after(holder); renderList(r.slice(0,3),holder); setStatus("");
+});
+
+/* ---------- Reproductor ---------- */
+const au=$("#audio"),play=$("#play"),seek=$("#seek");
+const fmt=s=>isFinite(s)?Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0"):"0:00";
+function playTrack(t){
+  au.src=t.preview; $("#pt").textContent=t.title; $("#pa").textContent=t.artist+" · "+t.src;
+  play.disabled=false; au.play().catch(()=>{});
+  if("mediaSession" in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:t.title,artist:t.artist,artwork:t.art?[{src:t.art}]:[]})}
+}
+play.onclick=()=>au.paused?au.play():au.pause();
+au.onplay=()=>play.textContent="⏸"; au.onpause=()=>play.textContent="▶";
+au.ontimeupdate=()=>{$("#cur").textContent=fmt(au.currentTime);if(au.duration)seek.value=au.currentTime/au.duration*1000};
+au.onloadedmetadata=()=>$("#dur").textContent=fmt(au.duration);
+seek.oninput=()=>{if(au.duration)au.currentTime=seek.value/1000*au.duration};
+$("#vol").oninput=e=>au.volume=e.target.value; au.volume=.8;
+
+/* ---------- Descarga (renombrada con el título) ---------- */
+const safe=s=>s.replace(/[\\/:*?"<>|]+/g," ").trim();
+async function download(t,btn){
+  const name=safe(`${t.artist?t.artist+" - ":""}${t.title}`)+"."+t.ext;
+  const old=btn.textContent; btn.textContent="…"; btn.disabled=true;
+  try{
+    const r=await fetch(t.dl); if(!r.ok) throw 0;
+    const blob=await r.blob(); const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }catch{
+    const a=document.createElement("a"); a.href=t.dl; a.download=name; a.target="_blank"; a.rel="noopener"; document.body.appendChild(a); a.click(); a.remove();
+  }
+  btn.textContent=old; btn.disabled=false;
+}
+
+/* ---------- Ajustes y PWA ---------- */
+$("#btnSet").onclick=()=>{$("#jamKey").value=jamKey();$("#dlgSet").showModal()};
+$("#setCancel").onclick=()=>$("#dlgSet").close();
+$("#setSave").onclick=()=>{try{localStorage.setItem("jamKey",$("#jamKey").value.trim())}catch{};$("#dlgSet").close()};
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+buildTabs(); buildView();
+</script>
+</body>
+</html>

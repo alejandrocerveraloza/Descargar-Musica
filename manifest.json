@@ -1,0 +1,13 @@
+{
+  "name": "DJ Studio",
+  "short_name": "DJ Studio",
+  "description": "Busca, previsualiza y descarga música de fuentes legales",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0b12",
+  "theme_color": "#0b0b12",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
