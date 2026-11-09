@@ -4,15 +4,35 @@ import YTDlpWrapModule from 'yt-dlp-wrap';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
-import { unlink } from 'fs/promises';
+import { unlink, access } from 'fs/promises';
+import { constants } from 'fs';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Arreglo para el constructor
 const YTDlpWrap = YTDlpWrapModule.default || YTDlpWrapModule;
 const ytDlp = new YTDlpWrap();
+
+// Descargar yt-dlp automáticamente si no existe
+async function ensureYtDlp() {
+  try {
+    // Intentamos ver si ya está disponible
+    await ytDlp.getVersion();
+    console.log('yt-dlp ya está disponible');
+  } catch (err) {
+    console.log('Descargando yt-dlp...');
+    try {
+      await YTDlpWrap.downloadFromGithub();
+      console.log('yt-dlp descargado correctamente');
+    } catch (downloadErr) {
+      console.error('Error descargando yt-dlp:', downloadErr);
+    }
+  }
+}
+
+// Ejecutamos la descarga al arrancar
+ensureYtDlp();
 
 // Health check
 app.get('/', (req, res) => {
@@ -25,6 +45,7 @@ app.get('/api/info', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'Falta el parámetro url' });
 
   try {
+    await ensureYtDlp();
     const info = await ytDlp.getVideoInfo(url);
     res.json({
       title: info.title || 'Sin título',
@@ -47,6 +68,8 @@ app.get('/api/download', async (req, res) => {
   const tempFile = path.join(os.tmpdir(), `${randomUUID()}.mp3`);
 
   try {
+    await ensureYtDlp();
+
     await ytDlp.execPromise([
       url,
       '-x',
